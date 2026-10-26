@@ -213,7 +213,7 @@ jobs:
             - **Web**: https://fisbal.github.io/alpha-omega/
             - **Android**: AlphaOmega.apk (tap it, open the file, Install). Newer versions install over the old one.
             - **Windows**: AlphaOmega-Setup.exe (or AlphaOmega.msi)
-            - **Mac** (Apple silicon and Intel): AlphaOmega.dmg. The first time: right-click Alpha & Omega, then Open.
+            - **Mac** (Apple silicon and Intel): AlphaOmega.dmg. The first time: right-click Alpha and Omega, then Open.
             - Installed apps update themselves: Windows and Mac install the new version and reopen, Android offers it.
             - Source code: the zip and tar.gz below
           files: |

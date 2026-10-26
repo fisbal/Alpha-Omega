@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Alpha & Omega",
+  "productName": "Alpha and Omega",
   "mainBinaryName": "AlphaOmega",
   "version": "../package.json",
   "identifier": "io.github.fisbal.alphaomega",
