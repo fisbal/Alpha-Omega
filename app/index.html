@@ -362,6 +362,24 @@ button{font-family:inherit;}
 }
 .tab .ti{font-size:17px;}
 .tab.active{color:var(--gold-strong);background:rgba(var(--glow),0.12);}
+/* screens: five tabs share the bar on the smallest phones, labels wrap instead of running off */
+.tab{flex:1 1 0;min-width:0;padding:6px 4px;text-align:center;line-height:1.15;min-height:44px}
+@media (max-width:420px){.tabbar{width:calc(100% - 16px);padding:4px}.tab{padding:6px 2px;letter-spacing:0;font-size:min(10.5px,2.9vw)}
+  #tabClaudeBtn{flex:0 0 40px}#tabClaude{display:none}}
+.book-grid{grid-template-columns:repeat(3,minmax(0,1fr));} .book-tile{min-width:0;overflow-wrap:anywhere;}
+/* Ask Claude */
+.ai-ov{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.ai-ov[hidden],.ai-box [hidden]{display:none}
+.ai-box{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--bg-raised);color:var(--ink);border:1px solid var(--hairline-strong);border-radius:18px;padding:18px;display:grid;gap:12px;font-family:var(--font-ui)}
+.ai-box h2{margin:0;font-family:var(--font-display);color:var(--gold-strong);font-size:22px}
+.ai-box p{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.5}
+.ai-box input,.ai-box textarea{width:100%;box-sizing:border-box;background:var(--bg-sunken);color:var(--ink);border:1px solid var(--hairline-strong);border-radius:10px;padding:10px 12px;font:inherit;font-size:16px}
+.ai-box textarea{resize:vertical}
+.ai-row{display:flex;gap:8px;flex-wrap:wrap}.ai-row>*{flex:1 1 140px}
+.ai-btn{min-height:44px;border-radius:12px;border:1px solid var(--hairline-strong);background:var(--bg-sunken);color:var(--ink);font:inherit;font-weight:600;cursor:pointer;padding:8px 14px}
+.ai-btn.main{background:var(--gold-strong);color:var(--bg);border-color:var(--gold-strong)}
+#aiOut{white-space:pre-wrap;max-height:42vh;overflow:auto;line-height:1.55;font-family:var(--font-scripture);font-size:16px}
+#aiOut:empty{display:none} #aiOut .q{display:block;color:var(--gold-strong);font-family:var(--font-ui);margin-bottom:6px}
 
 .footer-note{padding:26px 22px 10px;text-align:center;font-size:12px;color:var(--ink-faint);line-height:1.6;}
 </style>
@@ -475,7 +493,17 @@ button{font-family:inherit;}
     <button class="tab" data-tab="library" onclick="goTo('library')"><span class="ti">&#9776;</span><span id="tabLibrary">Library</span></button>
     <button class="tab" data-tab="essay" onclick="goTo('essay')"><span class="ti">&#10022;</span><span id="tabEssay">Start Here</span></button>
     <button class="tab" data-tab="evidence" onclick="goTo('evidence')"><span class="ti">&#10013;</span><span id="tabEvidence">Evidence</span></button>
+    <button class="tab" id="tabClaudeBtn" onclick="openCopilot()"><span class="ti">&#10022;</span><span id="tabClaude">Claude</span></button>
   </div>
+  <div class="ai-ov" id="ovClaude" hidden><div class="ai-box" role="dialog" aria-labelledby="aiH">
+    <h2 id="aiH"></h2>
+    <p id="aiP"></p>
+    <div class="ai-row" id="aiKeyRow"><input type="password" id="aiKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button class="ai-btn main" id="btnAiKey" type="button"></button></div>
+    <div id="aiOut" aria-live="polite"></div>
+    <div id="aiAskRow"><textarea id="aiQ" rows="2"></textarea>
+      <div class="ai-row" style="margin-top:8px"><button class="ai-btn main" id="btnAiAsk" type="button"></button><button class="ai-btn" id="btnAiForget" type="button"></button></div></div>
+    <button class="ai-btn" id="btnAiClose" type="button"></button>
+  </div></div>
 </div>
 
 <script>
@@ -5484,5 +5512,54 @@ updateVersionLabel();
 renderLibrary();
 renderEssayBody();
 renderEvidenceBody();
+
+/* ================= ASK CLAUDE ================= */
+/* A study companion for the passage on screen. It uses the reader's own Claude key, kept in this
+   browser only, and the official SDK bundled in vendor/. */
+const AI_KEY="alphaomega-claude-key",AI_MODEL="claude-opus-5-5";
+const AIT=(en,fr)=>currentLang==="fr"?fr:en;
+const aiKey=()=>{try{return localStorage.getItem(AI_KEY)||""}catch(e){return ""}};
+let AI_TURNS=[],AI_BUSY=null;
+const $ai=id=>document.getElementById(id);
+function aiScreen(){const sc=document.querySelector(".screen.active")?.dataset.screen||"home";
+  if(sc==="chapter"&&currentBookId)return `The reader is on ${bookName(currentBookId)} ${currentChapterNum}. On screen (Bible text and the app's commentary):\n${$ai("chapterBody").innerText.slice(0,8000)}`;
+  if(sc==="book"&&currentBookId)return `The reader is looking at the book of ${bookName(currentBookId)}.`;
+  if(sc==="essay")return "The reader is on the 'Start Here' essays about who Jesus was.";
+  if(sc==="evidence")return "The reader is on the page weighing the historical evidence for Jesus.";
+  return "The reader is on the "+sc+" page."}
+function renderAI(){const k=!!aiKey();
+  $ai("aiH").textContent=AIT("✦ Ask Claude","✦ Demander à Claude");
+  $ai("aiP").textContent=k?AIT("Ask about the passage on screen: a word, the background, how verses connect, what scholars think.","Posez une question sur le passage à l'écran : un mot, le contexte, le lien entre les versets, ce qu'en pensent les spécialistes.")
+    :AIT("Claude can help you study the passage on screen. It uses your own Claude key from console.anthropic.com, which stays on this device only.","Claude peut vous aider à étudier le passage à l'écran. Il utilise votre propre clé Claude (console.anthropic.com), qui reste sur cet appareil seulement.");
+  $ai("aiKeyRow").hidden=k;$ai("aiAskRow").hidden=!k;
+  $ai("btnAiKey").textContent=AIT("Turn on","Activer");$ai("btnAiAsk").textContent=AIT("Ask","Demander");
+  $ai("btnAiForget").textContent=AIT("Forget my key","Oublier ma clé");$ai("btnAiClose").textContent=AIT("Close","Fermer");
+  $ai("aiQ").placeholder=AIT("What does “Word” mean in John 1?","Que signifie « la Parole » en Jean 1 ?")}
+function openCopilot(){renderAI();$ai("ovClaude").hidden=false}
+async function askAI(){const q=$ai("aiQ").value.trim();if(!q||AI_BUSY||!aiKey())return;
+  $ai("aiQ").value="";const out=$ai("aiOut");out.innerHTML="";const qe=document.createElement("span");qe.className="q";qe.textContent=q;const ae=document.createElement("span");ae.textContent=AIT("Claude is thinking…","Claude réfléchit…");out.append(qe,ae);
+  AI_TURNS.push({role:"user",content:q});AI_TURNS=AI_TURNS.slice(-12);
+  const system=`You are the study companion inside Alpha & Omega, a bilingual New Testament study app (KJV/WEB, Louis Segond/Darby, verse-by-verse commentary, and an honest look at the historical Jesus). Help the reader understand the text: language, historical and literary background, cross-references, and the main views of Christian traditions and historians, with verse references. Be accurate, fair to different views, and respectful of faith. Keep answers under 200 words. Answer in ${currentLang==="fr"?"French":"English"}.\n\n${aiScreen()}`;
+  AI_BUSY=new AbortController();$ai("btnAiAsk").disabled=true;
+  try{const {default:Anthropic}=await import("./vendor/anthropic-sdk.mjs");
+    // The key is the reader's own and stays in this browser, so calling the API from the page is intended.
+    const client=new Anthropic({apiKey:aiKey(),dangerouslyAllowBrowser:true});
+    let text="";const st=client.messages.stream({model:AI_MODEL,max_tokens:1500,system,messages:AI_TURNS},{signal:AI_BUSY.signal});
+    st.on("text",d=>{text+=d;ae.textContent=text});
+    const fin=await st.finalMessage();
+    text=fin.content.map(b=>b.type==="text"?b.text:"").join("");
+    if(fin.stop_reason==="refusal"||!text){AI_TURNS.pop();ae.textContent=AIT("Claude could not answer that one. Try asking another way.","Claude n'a pas pu répondre. Essayez de formuler autrement.")}
+    else{ae.textContent=text;AI_TURNS.push({role:"assistant",content:text})}}
+  catch(e){AI_TURNS.pop();const s=e&&e.status;
+    if(e&&e.name==="APIUserAbortError")ae.textContent="";
+    else if(s===401||s===403){try{localStorage.removeItem(AI_KEY)}catch(_){}ae.textContent=AIT("This key was not accepted. Paste a new one.","Cette clé n'a pas été acceptée. Collez-en une nouvelle.");renderAI()}
+    else if(s===429||s===529)ae.textContent=AIT("Claude is busy right now. Wait a moment and try again.","Claude est occupé. Attendez un instant et réessayez.");
+    else ae.textContent=AIT("Claude could not answer. Check your connection and try again.","Claude n'a pas pu répondre. Vérifiez votre connexion et réessayez.")}
+  finally{AI_BUSY=null;$ai("btnAiAsk").disabled=false}}
+$ai("btnAiKey").onclick=()=>{const v=$ai("aiKey").value.trim();if(!v)return;try{localStorage.setItem(AI_KEY,v)}catch(e){}$ai("aiKey").value="";renderAI();$ai("aiQ").focus()};
+$ai("btnAiForget").onclick=()=>{try{localStorage.removeItem(AI_KEY)}catch(e){}AI_TURNS=[];$ai("aiOut").innerHTML="";renderAI()};
+$ai("btnAiAsk").onclick=askAI;$ai("aiQ").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();askAI()}});
+$ai("btnAiClose").onclick=()=>{if(AI_BUSY)AI_BUSY.abort();$ai("ovClaude").hidden=true};
+$ai("ovClaude").addEventListener("click",e=>{if(e.target.id==="ovClaude")$ai("btnAiClose").click()});
 </script>
 <script>if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script></body></html>

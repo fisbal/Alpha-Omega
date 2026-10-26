@@ -1,0 +1,14 @@
+{
+  "name": "alphaomega",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Alpha & Omega: New Testament study by Martin B, for the web, Android, Windows and Mac",
+  "scripts": {
+    "tauri": "tauri",
+    "check:screens": "node scripts/check-screens.mjs app screens"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
+    "playwright": "1.48.2"
+  }
+}
