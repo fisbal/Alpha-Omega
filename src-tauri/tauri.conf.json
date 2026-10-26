@@ -12,6 +12,7 @@
       {
         "label": "main",
         "title": "Alpha & Omega",
+        "zoomHotkeysEnabled": true,
         "width": 1280,
         "height": 860,
         "minWidth": 320,

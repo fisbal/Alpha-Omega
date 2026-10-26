@@ -36,6 +36,9 @@ public class MainActivity extends Activity {
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
+        s.setSupportZoom(true);           // two-finger pinch zoom
+        s.setBuiltInZoomControls(true);
+        s.setDisplayZoomControls(false);   // no +/- buttons drawn over the page
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setAllowFileAccess(false);
