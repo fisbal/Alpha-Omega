@@ -3,55 +3,30 @@
 A deep, bilingual (EN/FR) New Testament study app — KJV/WEB and Louis Segond/Darby,
 verse-by-verse commentary, and an honest investigation into the historical Jesus.
 
-The app itself (`app/index.html`) is unchanged from the version published as a
-Claude Artifact. This repository only adds the pattern used for NavalOS,
-MillionOS, and ProDFOS: every push to `main` automatically rebuilds and
-republishes a Windows installer, an Android APK, and a web link — no manual
-packaging step.
+The app lives in `app/` (one `index.html` plus manifest, service worker and icons). The rest of the
+repository builds it for every platform the same way as NavalOS, MillionOS and ProDFOS: every push to
+`main` publishes the web version and a Release with the Android, Windows and Mac apps.
 
-## Get the app — three ways
+## Get the app
 
-**1. Any phone, tablet, or computer (no install needed, works everywhere):**
-Open **https://fisbal.github.io/alpha-omega/** in a browser. On Android/Chrome
-and most modern browsers you can also tap "Install app" / "Add to Home
-Screen" to get an app icon and offline access.
+- **Web** (any phone, tablet or computer): https://fisbal.github.io/alpha-omega/ — installable from the browser and works offline.
+- **Android, Windows, Mac**: the [latest release](https://github.com/fisbal/alpha-omega/releases/latest) has `AlphaOmega.apk`, `AlphaOmega-Setup.exe` (or `.msi`) and `AlphaOmega.dmg`. Installed apps update themselves: Windows and Mac install the new version and reopen, Android offers it.
 
-**2. Windows:**
-Go to the [latest release](../../releases/tag/latest), download
-`AlphaOmega-windows-setup.exe`, and run it. It installs like any normal
-Windows program (Start Menu + desktop shortcut).
+## ✦ Ask Claude
+The ✦ Claude tab opens a study companion for the passage on screen (words, background, cross-references, what scholars think). It uses the reader's own Claude key from console.anthropic.com, kept on the device only.
 
-**3. Android:**
-Go to the [latest release](../../releases/tag/latest), download
-`AlphaOmega-android.apk` on your phone, and open it to install. Android may
-ask you to allow "install from unknown sources" the first time — that's
-expected for an app installed outside the Play Store.
-
-## How the automatic rebuild works
-
-Every time something changes on `main`, GitHub Actions (`.github/workflows/build.yml`) runs four jobs:
-
-- `android` — generates a fresh native Android project with Capacitor
-  (wrapping `app/`, nothing duplicated) and builds the APK.
-- `windows` — packages `app/` into a Windows installer with Electron +
-  electron-builder.
-- `web` — copies `app/` as-is to the `gh-pages` branch, which GitHub Pages
-  serves at the link above.
-- `release` — collects the APK and the EXE and republishes them under a
-  single rolling release tagged `latest`, so the download links above never
-  change even though the files behind them do.
+## How the automatic build works
+Every pull request and every push to `main` runs `.github/workflows/build.yml`:
+- `web` checks every screen on phone, tablet, PC and Mac sizes in English and French (`npm run check:screens`); on `main` it publishes `app/` to the `gh-pages` branch (Settings → Pages → Deploy from branch → `gh-pages`, once).
+- `android` builds the APK from `android/`, which bundles `app/` and works offline, signed with the key in the `ALPHAOMEGA_KEYSTORE_B64` / `ALPHAOMEGA_KEYSTORE_PASSWORD` secrets so every version installs over the last.
+- `windows` and `mac` build the desktop apps from `src-tauri/` (Tauri), with signed updates (`TAURI_SIGNING_*` secrets).
+- `release` (on `main`) publishes Release v1.0.N with all of them, `latest.json` for the desktop updater and the source code.
 
 ## Repository layout
 
 ```
-app/          the actual Alpha & Omega app (index.html, manifest, service
-              worker, icons) — the only folder with real content
-electron/     Windows desktop wrapper around app/ (no app content here)
-capacitor/    Android wrapper config around app/ (no app content here;
-              the native android/ project is generated fresh by CI)
-.github/      the build-and-release pipeline
+app/          the Alpha & Omega app itself (index.html, manifest, service worker, icons, vendor/ for Ask Claude)
+android/      Android app around app/ (no app content here)
+src-tauri/    Windows and Mac app around app/ (no app content here)
+scripts/      screen check
 ```
-
-To change the app itself, edit `app/index.html` and push — the next build
-picks it up everywhere automatically. Nothing else in this repo needs to
-change for a content update.

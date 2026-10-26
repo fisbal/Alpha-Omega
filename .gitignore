@@ -1,4 +1,11 @@
 node_modules/
-electron/dist/
-capacitor/android/
 *.log
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+*.jks
+src-tauri/target/
+src-tauri/gen/
+screens/
