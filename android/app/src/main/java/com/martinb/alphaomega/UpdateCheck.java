@@ -17,8 +17,12 @@ import java.util.Scanner;
 
 /** On start, asks GitHub for the newest Alpha & Omega release and offers it when it is newer than this app. */
 final class UpdateCheck {
-    private static final String LATEST = "https://api.github.com/repos/fisbal/alpha-omega/releases/latest";
-    private static final String APK = "https://github.com/fisbal/alpha-omega/releases/latest/download/AlphaOmega.apk";
+    /** Public update channel on the hub first (works when the app repo is private), then the old address. */
+    private static final String[] LATEST = {
+            "https://fisbal.github.io/updates/alpha-omega/release.json",
+            "https://api.github.com/repos/fisbal/alpha-omega/releases/latest",
+    };
+    private static final String APK = "https://github.com/fisbal/fisbal.github.io/releases/download/alpha-omega-updates/AlphaOmega.apk";
 
     private UpdateCheck() {}
 
@@ -27,19 +31,28 @@ final class UpdateCheck {
         if (mine <= 1) return; // local builds have no number to compare
         new Thread(() -> {
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL(LATEST).openConnection();
-                c.setRequestProperty("Accept", "application/vnd.github+json");
-                c.setRequestProperty("User-Agent", "AlphaOmega-Android");
-                c.setConnectTimeout(8000);
-                c.setReadTimeout(8000);
-                if (c.getResponseCode() != 200) return;
-                String body;
-                try (InputStream in = c.getInputStream(); Scanner sc = new Scanner(in, "UTF-8").useDelimiter("\\A")) {
-                    body = sc.hasNext() ? sc.next() : "";
+                String tag = "";
+                for (String url : LATEST) {
+                    try {
+                        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                        c.setRequestProperty("Accept", "application/vnd.github+json");
+                        c.setRequestProperty("User-Agent", "AlphaOmega-Android");
+                        c.setConnectTimeout(8000);
+                        c.setReadTimeout(8000);
+                        if (c.getResponseCode() != 200) continue;
+                        String body;
+                        try (InputStream in = c.getInputStream(); Scanner sc = new Scanner(in, "UTF-8").useDelimiter("\\A")) {
+                            body = sc.hasNext() ? sc.next() : "";
+                        }
+                        tag = new JSONObject(body).optString("tag_name", "");
+                        if (!tag.isEmpty()) break;
+                    } catch (Exception next) {
+                        // try the next address
+                    }
                 }
-                final String tag = new JSONObject(body).optString("tag_name", "");
-                if (buildOf(tag) <= mine) return;
-                new Handler(Looper.getMainLooper()).post(() -> offer(a, tag.replaceFirst("^v", "")));
+                final String found = tag;
+                if (buildOf(found) <= mine) return;
+                new Handler(Looper.getMainLooper()).post(() -> offer(a, found.replaceFirst("^v", "")));
             } catch (Exception ignored) {
                 // Offline or GitHub unreachable: try again next time.
             }
